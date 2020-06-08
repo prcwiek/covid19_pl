@@ -37,3 +37,10 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# ignore all files in a directory others
+others/
+
+# ignore all files in a directory others
+rsconnect/
+

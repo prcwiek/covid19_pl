@@ -90,12 +90,13 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                   mainPanel(
                     plotOutput("covidPlot"),
                     h4("Data source:"),
-                    br(),
                     p("European Centre for Disease Prevention and Control"),
                     a(
                       "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
                       href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
-                    )
+                    ),
+                    br(),br(),
+                    p("Data last updated on : ", max(dx$dateRep))
                     
                   )
 ))

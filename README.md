@@ -1,4 +1,4 @@
-# COVID19 Poland
+# COVID-19 Poland
 Covid-19 cases in Poland compared to other EU countries
 
 ### Data sources

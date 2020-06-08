@@ -1,2 +1,5 @@
-# covid19_pl
+# COVID19 Poland
 Covid-19 cases in Poland compared to other EU countries
+
+### Data sources
+[European Centre for Disease Prevention and Control](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide)

@@ -1,3 +1,4 @@
+library(DT)
 library(ggthemes)
 library(RColorBrewer)
 library(shiny)
@@ -88,16 +89,18 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                   ),
                   
                   mainPanel(
-                    plotOutput("covidPlot"),
-                    h4("Data source:"),
-                    p("European Centre for Disease Prevention and Control"),
-                    a(
-                      "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
-                      href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
-                    ),
-                    br(),br(),
-                    p("Data last updated on : ", max(dx$dateRep))
-                    
+                    tabsetPanel(
+                      tabPanel("ECDPC plot", plotOutput("covidPlot"),
+                               h4("Data source:"),
+                               p("European Centre for Disease Prevention and Control"),
+                               a(
+                                 "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                               ),
+                               br(),br(),
+                               p("Data last updated on : ", max(dx$dateRep))),
+                      tabPanel("ECDPC table", dataTableOutput("covidTable"))
+                    )
                   )
 ))
 
@@ -108,7 +111,7 @@ server <- function(input, output, session) {
     dx %>%
       filter(id_country %in% input$checkCountries) %>%
       mutate(
-        Date = dateRep,
+        Date = as.Date(dateRep),
         cases_per_million = cases / (popData2018 / 1000000),
         Country = countriesAndTerritories
       ) %>%
@@ -182,11 +185,10 @@ server <- function(input, output, session) {
         xlab("Date") +
         ylab("New cases per day") +
         scale_y_continuous(breaks = round(seq(
-          min(dp()$cases), max(dp()$cases), by = 100
-        ), 0)) +
-        ylim(0, NA)
+          min(dp()$cases), max(dp()$cases), by = 250), 0),
+          limits = c(0,NA))
     }
-    
+
     if (input$checkRawData) {
       p <- p + geom_line()
     }
@@ -194,6 +196,15 @@ server <- function(input, output, session) {
     p
     
   })
+  
+  output$covidTable <- renderDataTable({
+    dt <- dp()
+    names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million", "Sum of new cases per million")
+    dt[,5] <- round(dt[,5], 2)
+    dt[,6] <- round(dt[,6], 2)
+    dt
+  }, rownames = FALSE)
+  
   # End application after closing a window or tab ---------------------------
   session$onSessionEnded(stopApp)
 }

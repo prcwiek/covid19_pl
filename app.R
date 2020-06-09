@@ -79,6 +79,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                     ),
                     checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
                     checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = TRUE),
+                    checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
                     checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
                     checkboxGroupInput(
@@ -191,7 +192,8 @@ server <- function(input, output, session) {
     }
     
     if(input$checkSmooth){
-      p <- p+ geom_smooth(method = lm, formula = y ~ splines::bs(x, 6), se = FALSE)
+      p <- p+ geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
+                          se = input$checkConfidenceInterval)
     }
     
     p

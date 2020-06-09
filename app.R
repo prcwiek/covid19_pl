@@ -191,7 +191,7 @@ server <- function(input, output, session) {
     }
     
     if(input$checkSmooth){
-      p <- p+ geom_smooth(se = FALSE)
+      p <- p+ geom_smooth(method = lm, formula = y ~ splines::bs(x, 6), se = FALSE)
     }
     
     p

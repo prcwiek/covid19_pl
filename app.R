@@ -78,6 +78,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                       max = max(dx$dateRep)
                     ),
                     checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
+                    checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = TRUE),
                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
                     checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
                     checkboxGroupInput(
@@ -142,7 +143,6 @@ server <- function(input, output, session) {
           y = log(cases_per_million),
           color = Country
         )) +
-        geom_smooth(se = FALSE) +
         scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
         theme_gdocs() +
         scale_fill_manual(values = dcolors) +
@@ -153,7 +153,6 @@ server <- function(input, output, session) {
       p <-
         ggplot(data = dp(),
                aes(x = Date, y = cases_per_million, color = Country)) +
-        geom_smooth(se = FALSE) +
         scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
         theme_gdocs() +
         scale_fill_manual(values = dcolors) +
@@ -167,7 +166,6 @@ server <- function(input, output, session) {
           y = log(cases),
           color = Country
         )) +
-        geom_smooth(se = FALSE) +
         scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
         theme_gdocs() +
         scale_fill_manual(values = dcolors) +
@@ -177,7 +175,6 @@ server <- function(input, output, session) {
     } else if (!input$logScale & !input$casespm) {
       p <-
         ggplot(data = dp(), aes(x = Date, y = cases, color = Country)) +
-        geom_smooth(se = FALSE) +
         scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
         theme_gdocs() +
         scale_fill_manual(values = dcolors) +
@@ -189,8 +186,12 @@ server <- function(input, output, session) {
           limits = c(0,NA))
     }
 
-    if (input$checkRawData) {
+    if(input$checkRawData) {
       p <- p + geom_line()
+    }
+    
+    if(input$checkSmooth){
+      p <- p+ geom_smooth(se = FALSE)
     }
     
     p

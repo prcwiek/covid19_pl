@@ -77,14 +77,14 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                       min = min(dx$dateRep),
                       max = max(dx$dateRep)
                     ),
-                    checkboxInput("checkRawData", label = "Show raw data", value = FALSE),
-                    checkboxInput("casespm", label = "New cases per million", value = TRUE),
-                    checkboxInput("logScale", label = "Logarithmic scale", value = TRUE),
+                    checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
+                    checkboxInput("casespm", label = "New cases per million", value = FALSE),
+                    checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
                     checkboxGroupInput(
                       "checkCountries",
                       label = h4("Select countries"),
                       choices = cl,
-                      selected = c(1, 2, 7, 11, 13, 16, 17, 23, 26)
+                      selected = c(1, 2, 7, 13, 16, 17, 23, 26)
                     )
                   ),
                   

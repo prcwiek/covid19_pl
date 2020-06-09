@@ -139,52 +139,35 @@ server <- function(input, output, session) {
   output$covidPlot <- renderPlot({
     if (input$logScale & input$casespm) {
       p <-
-        ggplot(data = dp(), aes(
-          x = Date,
-          y = log(cases_per_million),
-          color = Country
-        )) +
-        scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
-        theme_gdocs() +
-        scale_fill_manual(values = dcolors) +
-        theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-        xlab("Date") +
-        ylab("log(New cases per million per day)")
+        ggplot(data = dp(), 
+               aes(x = Date, y = log(cases_per_million), color = Country))
     } else if (!input$logScale & input$casespm) {
       p <-
         ggplot(data = dp(),
-               aes(x = Date, y = cases_per_million, color = Country)) +
-        scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
-        theme_gdocs() +
-        scale_fill_manual(values = dcolors) +
-        theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-        xlab("Date") +
-        ylab("New cases per million per day")
+               aes(x = Date, y = cases_per_million, color = Country))
     } else if (input$logScale & !input$casespm) {
       p <-
-        ggplot(data = dp(), aes(
-          x = Date,
-          y = log(cases),
-          color = Country
-        )) +
-        scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
-        theme_gdocs() +
-        scale_fill_manual(values = dcolors) +
-        theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-        xlab("Date") +
-        ylab("log(New cases per day)")
+        ggplot(data = dp(), 
+               aes(x = Date, y = log(cases), color = Country))
     } else if (!input$logScale & !input$casespm) {
       p <-
-        ggplot(data = dp(), aes(x = Date, y = cases, color = Country)) +
-        scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
-        theme_gdocs() +
-        scale_fill_manual(values = dcolors) +
-        theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-        xlab("Date") +
-        ylab("New cases per day") +
-        scale_y_continuous(breaks = round(seq(
-          min(dp()$cases), max(dp()$cases), by = 250), 0),
-          limits = c(0,NA))
+        ggplot(data = dp(), 
+               aes(x = Date, y = cases, color = Country))
+    }
+
+    # add common part ---------------------------------------------------------
+    p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
+      theme_gdocs() +
+      scale_fill_manual(values = dcolors) +
+      theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+      xlab("Date") +
+      ylab("log(New cases per million per day)")
+    
+    # additional part for standard plot ---------------------------------------
+    if (!input$logScale & !input$casespm) {
+      p <- p + scale_y_continuous(breaks = round(seq(
+        min(dp()$cases), max(dp()$cases), by = 250), 0),
+        limits = c(0,NA))
     }
 
     if(input$checkRawData) {

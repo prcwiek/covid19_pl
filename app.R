@@ -78,7 +78,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                       max = max(dx$dateRep)
                     ),
                     checkboxInput("checkRawData", label = "Show raw data", value = FALSE),
-                    checkboxInput("casespm", label = "Cases per million", value = TRUE),
+                    checkboxInput("casespm", label = "New cases per million", value = TRUE),
                     checkboxInput("logScale", label = "Logarithmic scale", value = TRUE),
                     checkboxGroupInput(
                       "checkCountries",
@@ -121,7 +121,6 @@ server <- function(input, output, session) {
              deaths,
              popData2018,
              cases_per_million) %>%
-      filter(Date > input$sdate & Date <= input$edate) %>%
       filter(complete.cases(.)) %>%
       arrange(Date) %>%
       group_by(Country) %>%
@@ -131,7 +130,8 @@ server <- function(input, output, session) {
         case_sum = cumsum(cases),
         cases_per_million,
         cases_per_million_sum = cumsum(cases_per_million)
-      )
+      ) %>% 
+      filter(Date > input$sdate & Date <= input$edate)
   })
   
   output$covidPlot <- renderPlot({

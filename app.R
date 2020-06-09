@@ -92,7 +92,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                   
                   mainPanel(
                     tabsetPanel(
-                      tabPanel("ECDPC plot", plotOutput("covidPlot"),
+                      tabPanel("ECDPC plot", plotOutput("covidPlot", height = 600),
                                h4("Data source:"),
                                p("European Centre for Disease Prevention and Control"),
                                a(

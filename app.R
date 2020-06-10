@@ -97,7 +97,22 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                   
                   mainPanel(
                     tabsetPanel(
-                      tabPanel("ECDPC plot", plotOutput("covidPlot", height = 600),
+                      tabPanel("ECDPC Highcharts plot", 
+                               highchartOutput("covid_hc_plot", height = 600),
+                               h4("Data source:"),
+                               p("European Centre for Disease Prevention and Control"),
+                               a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                               ),
+                               br(),br(),
+                               p("Data last updated on : ", max(dx$dateRep)),
+                               br(),
+                               p("Prepared with Highcharts"),
+                               a("www.highcharts.com/",
+                                 href = "https://www.highcharts.com/")),
+                      tabPanel("ECDPC table", dataTableOutput("covidTable")),
+                      tabPanel("ECDPC plot ",
+                               plotOutput("covidPlot", height = 600),
                                h4("Data source:"),
                                p("European Centre for Disease Prevention and Control"),
                                a(
@@ -105,11 +120,9 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                                  href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
                                ),
                                br(),br(),
-                               p("Data last updated on : ", max(dx$dateRep))),
-                      tabPanel("ECDPC table", dataTableOutput("covidTable")),
-                      tabPanel("Highercharts plot", highchartOutput("covid_hc_plot"))
-                    )
+                               p("Data last updated on : ", max(dx$dateRep)))
                   )
+                )
 ))
 
 server <- function(input, output, session) {
@@ -197,6 +210,28 @@ server <- function(input, output, session) {
     dt[,6] <- round(dt[,6], 2)
     dt
   }, rownames = FALSE)
+  
+  output$covid_hc_plot <- renderHighchart({
+    dhc <- dp() %>% 
+      group_by(Country) %>% 
+      do(dhc = list(
+        data = list_parse2(data.frame(.$Date, .$cases))
+      )) %>% 
+      {map2(.$Country, .$dhc, function(x, y){
+        append(list(name = x), y)
+      })}
+    
+    highchart() %>% 
+      hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
+      hc_add_series_list(dhc) %>%
+      #hc_xAxis(type = "datetime") %>% 
+      hc_xAxis(categories = unique(dp()$Date)) %>% 
+      hc_yAxis(title = list(text = "New cases")) %>% 
+      hc_tooltip(table = TRUE,
+                 sort = TRUE) %>% 
+      hc_colors(dcolors)
+    
+  })
   
   # End application after closing a window or tab ---------------------------
   session$onSessionEnded(stopApp)

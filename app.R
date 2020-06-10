@@ -1,5 +1,6 @@
 library(DT)
 library(ggthemes)
+library(highcharter)
 library(shiny)
 library(tidyverse)
 
@@ -105,7 +106,8 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                                ),
                                br(),br(),
                                p("Data last updated on : ", max(dx$dateRep))),
-                      tabPanel("ECDPC table", dataTableOutput("covidTable"))
+                      tabPanel("ECDPC table", dataTableOutput("covidTable")),
+                      tabPanel("Highercharts plot", highchartOutput("covid_hc_plot"))
                     )
                   )
 ))

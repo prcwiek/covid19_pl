@@ -1,6 +1,5 @@
 library(DT)
 library(ggthemes)
-library(RColorBrewer)
 library(shiny)
 library(tidyverse)
 
@@ -56,7 +55,12 @@ dx <- dx %>%
 rm(dcl)
 
 # colors ------------------------------------------------------------------
-dcolors <- colorRampPalette(brewer.pal(11, "Spectral"))(17)
+dcolors <- c("red", "cyan", "green", "orange", "darkblue",
+             "darkgreen", "gold", "pink", "lightgray", "limegreen",
+             "magenta", "navyblue", "mistyrose", "orchid", "purple",
+             "blue", "yellow", "turquise", "tomato", "sienna",
+             "seagreen", "violeta", "mintcream", "gray", "darksalmon",
+             "deeppink", "brown", "bisque")
 
 ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                 sidebarLayout(
@@ -161,7 +165,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date") +
-      ylab("log(New cases per million per day)")
+      ylab("log(New cases per million per day)") +
+      scale_color_manual(values = dcolors)
     
     # additional part for standard plot ---------------------------------------
     if (!input$logScale & !input$casespm) {

@@ -150,7 +150,6 @@ server <- function(input, output, session) {
         cases,
         case_sum = cumsum(cases),
         cases_per_million,
-        cases_per_million_sum = cumsum(cases_per_million)
       ) %>% 
       filter(Date > input$sdate & Date <= input$edate)
   })
@@ -205,9 +204,8 @@ server <- function(input, output, session) {
   
   output$covidTable <- renderDataTable({
     dt <- dp()
-    names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million", "Sum of new cases per million")
+    names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million")
     dt[,5] <- round(dt[,5], 2)
-    dt[,6] <- round(dt[,6], 2)
     dt
   }, rownames = FALSE)
   

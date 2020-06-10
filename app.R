@@ -68,9 +68,9 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                     dateInput(
                       "sdate",
                       "Start date:",
-                      value = "2020-03-01",
+                      value = "2020-03-07",
                       format = "yyyy-mm-dd",
-                      min = min(dx$dateRep),
+                      min = "2020-03-07",
                       max = max(dx$dateRep)
                     ),
                     dateInput(

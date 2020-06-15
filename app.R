@@ -111,7 +111,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                                a("www.highcharts.com/",
                                  href = "https://www.highcharts.com/")),
                       tabPanel("ECDPC table", dataTableOutput("covidTable")),
-                      tabPanel("ECDPC plot ",
+                      tabPanel("ECDPC ggplot ",
                                plotOutput("covidPlot", height = 600),
                                h4("Data source:"),
                                p("European Centre for Disease Prevention and Control"),
@@ -210,27 +210,43 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
   
   output$covid_hc_plot <- renderHighchart({
-    dhc <- dp() %>% 
-      group_by(Country) %>% 
-      do(dhc = list(
-        data = list_parse2(data.frame(.$Date, .$cases))
-      )) %>% 
-      {map2(.$Country, .$dhc, function(x, y){
-        append(list(name = x), y)
-      })}
-    
+   
+    if(!input$logScale){
+      dhc <- dp() %>% 
+        group_by(Country) %>% 
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases))
+        )) %>% 
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}  
+      y_text <- "New cases"
+    } else if(input$logScale){
+      dhc <- dp() %>% 
+        mutate(cases = log(cases)) %>% 
+        group_by(Country) %>% 
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases))
+        )) %>% 
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}
+      y_text <- "log(New cases)"
+    }
+  
     highchart() %>% 
       hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
       hc_add_series_list(dhc) %>%
       #hc_xAxis(type = "datetime") %>% 
       hc_xAxis(categories = unique(dp()$Date)) %>% 
-      hc_yAxis(title = list(text = "New cases")) %>% 
+      hc_yAxis(title = list(text = y_text)) %>% 
       hc_tooltip(table = TRUE,
                  sort = TRUE) %>% 
       hc_colors(dcolors)
     
   })
-  
+
+
   # End application after closing a window or tab ---------------------------
   session$onSessionEnded(stopApp)
 }

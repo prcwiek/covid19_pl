@@ -11,7 +11,21 @@ dx <-read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv",
               fileEncoding = "UTF-8-BOM")
 
 # change date format ------------------------------------------------------
-dx$dateRep <- as.Date(dx$dateRep, format = "%d/%m/%Y")
+tryCatch(
+  expr = {
+    dx$dateRep <- as.Date(dx$dateRep, format = "%d/%m/%Y")
+  },
+  error = function(e){
+    message("Data frame is incorrect!")
+    print(e)
+  },
+  finally = {
+    stopifnot(TRUE)
+  }
+)
+
+
+                          
 
 
 # list of countries--------------------------------------------------------
@@ -133,14 +147,14 @@ server <- function(input, output, session) {
       filter(id_country %in% input$checkCountries) %>%
       mutate(
         Date = as.Date(dateRep),
-        cases_per_million = cases / (popData2018 / 1000000),
+        cases_per_million = cases / (popData2019 / 1000000),
         Country = countriesAndTerritories
       ) %>%
       select(Date,
              Country,
              cases,
              deaths,
-             popData2018,
+             popData2019,
              cases_per_million) %>%
       filter(complete.cases(.)) %>%
       arrange(Date) %>%
@@ -151,7 +165,9 @@ server <- function(input, output, session) {
         case_sum = cumsum(cases),
         cases_per_million,
       ) %>% 
-      filter(Date > input$sdate & Date <= input$edate)
+      filter(Date > input$sdate & Date <= input$edate) %>% 
+      ungroup()
+    
   })
   
   output$covidPlot <- renderPlot({
@@ -206,8 +222,8 @@ server <- function(input, output, session) {
     dt <- dp()
     names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million")
     dt[,5] <- round(dt[,5], 2)
-    dt
-  }, rownames = FALSE)
+    dt}
+  )
   
   output$covid_hc_plot <- renderHighchart({
    

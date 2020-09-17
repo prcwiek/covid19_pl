@@ -2,6 +2,7 @@ library(DT)
 library(ggthemes)
 library(highcharter)
 library(shiny)
+library(shinyjs)
 library(tidyverse)
 
 # Data from ---------------------------------------------------------------
@@ -23,10 +24,6 @@ tryCatch(
     stopifnot(TRUE)
   }
 )
-
-
-                          
-
 
 # list of countries--------------------------------------------------------
 
@@ -77,13 +74,17 @@ dcolors <- c("red", "cyan", "green", "orange", "darkblue",
              "seagreen", "violeta", "mintcream", "gray", "darksalmon",
              "deeppink", "brown", "bisque")
 
-ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
+ui <- fluidPage(
+  
+  shinyjs::useShinyjs(),
+  
+  titlePanel("COVID-19 cases in Poland"),
                 sidebarLayout(
                   sidebarPanel(
                     dateInput(
                       "sdate",
                       "Start date:",
-                      value = "2020-03-07",
+                      value = as.character(Sys.Date() - 30),
                       format = "yyyy-mm-dd",
                       min = "2020-03-07",
                       max = max(dx$dateRep)
@@ -96,11 +97,11 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                       min = min(dx$dateRep),
                       max = max(dx$dateRep)
                     ),
-                    checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
-                    checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = TRUE),
+#                    checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
+                    checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = FALSE),
                     checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
-                    checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
+#                    checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
                     checkboxGroupInput(
                       "checkCountries",
                       label = h4("Select countries"),
@@ -110,7 +111,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                   ),
                   
                   mainPanel(
-                    tabsetPanel(
+                    tabsetPanel(id = "tabs",
                       tabPanel("ECDPC Highcharts plot", 
                                highchartOutput("covid_hc_plot", height = 600),
                                h4("Data source:"),
@@ -125,7 +126,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
                                a("www.highcharts.com/",
                                  href = "https://www.highcharts.com/")),
                       tabPanel("ECDPC table", dataTableOutput("covidTable")),
-                      tabPanel("ECDPC ggplot ",
+                      tabPanel("ECDPC ggplot",
                                plotOutput("covidPlot", height = 600),
                                h4("Data source:"),
                                p("European Centre for Disease Prevention and Control"),
@@ -140,6 +141,7 @@ ui <- fluidPage(titlePanel("COVID-19 cases in Poland"),
 ))
 
 server <- function(input, output, session) {
+  
   dp <- reactive({
     req(input$sdate, input$edate, input$checkCountries)
     
@@ -147,7 +149,7 @@ server <- function(input, output, session) {
       filter(id_country %in% input$checkCountries) %>%
       mutate(
         Date = as.Date(dateRep),
-        cases_per_million = cases / (popData2019 / 1000000),
+        cases_per_million = round(cases / (popData2019 / 1000000), 0),
         Country = countriesAndTerritories
       ) %>%
       select(Date,
@@ -171,46 +173,35 @@ server <- function(input, output, session) {
   })
   
   output$covidPlot <- renderPlot({
-    if (input$logScale & input$casespm) {
-      p <-
-        ggplot(data = dp(), 
-               aes(x = Date, y = log(cases_per_million), color = Country))
-    } else if (!input$logScale & input$casespm) {
-      p <-
-        ggplot(data = dp(),
-               aes(x = Date, y = cases_per_million, color = Country))
-    } else if (input$logScale & !input$casespm) {
-      p <-
-        ggplot(data = dp(), 
-               aes(x = Date, y = log(cases), color = Country))
-    } else if (!input$logScale & !input$casespm) {
-      p <-
-        ggplot(data = dp(), 
-               aes(x = Date, y = cases, color = Country))
+    if(input$casespm) {
+        p <- ggplot(data = dp(),
+                    aes(x = Date, y = cases_per_million, color = Country)) +
+          geom_line() +
+          ylab("New cases per million per day") +
+          scale_y_continuous(breaks = round(seq(0, max(dp()$cases_per_million), by = 50), 0), limits = c(0,NA))
+    } else {
+        p <- ggplot(data = dp(),
+                    aes(x = Date, y = cases, color = Country)) + 
+          geom_line() + 
+          ylab("New cases") +
+          scale_y_continuous(breaks = round(seq(min(dp()$cases), max(dp()$cases), by = 250), 0), limits = c(0,NA))
     }
-
+    
     # add common part ---------------------------------------------------------
-    p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m") +
-      theme_gdocs() +
+    if((input$edate - input$sdate) <= 30) {
+      p <- p + scale_x_date(date_breaks = "1 day", date_labels = "%Y-%m-%d")
+    } else {
+      p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m")
+    }
+    p <- p + theme_gdocs() +
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date") +
-      ylab("log(New cases per million per day)") +
+      #ylab("New cases per million per day") +
       scale_color_manual(values = dcolors)
-    
-    # additional part for standard plot ---------------------------------------
-    if (!input$logScale & !input$casespm) {
-      p <- p + scale_y_continuous(breaks = round(seq(
-        min(dp()$cases), max(dp()$cases), by = 250), 0),
-        limits = c(0,NA))
-    }
-
-    if(input$checkRawData) {
-      p <- p + geom_line()
-    }
-    
+      
     if(input$checkSmooth){
-      p <- p+ geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
+      p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
                           se = input$checkConfidenceInterval)
     }
     
@@ -219,35 +210,34 @@ server <- function(input, output, session) {
   })
   
   output$covidTable <- renderDataTable({
-    dt <- dp()
-    names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million")
-    dt[,5] <- round(dt[,5], 2)
-    dt}
+      dt <- dp()
+      names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million")
+      dt[,5] <- round(dt[,5], 2)
+      dt}
   )
-  
+    
   output$covid_hc_plot <- renderHighchart({
    
-    if(!input$logScale){
-      dhc <- dp() %>% 
-        group_by(Country) %>% 
+    if(input$casespm) {
+      dhc <- dp() %>%
+        group_by(Country) %>%
         do(dhc = list(
-          data = list_parse2(data.frame(.$Date, .$cases))
-        )) %>% 
-        {map2(.$Country, .$dhc, function(x, y){
-          append(list(name = x), y)
-        })}  
-      y_text <- "New cases"
-    } else if(input$logScale){
-      dhc <- dp() %>% 
-        mutate(cases = log(cases)) %>% 
-        group_by(Country) %>% 
-        do(dhc = list(
-          data = list_parse2(data.frame(.$Date, .$cases))
-        )) %>% 
+          data = list_parse2(data.frame(.$Date, .$cases_per_million))
+        )) %>%
         {map2(.$Country, .$dhc, function(x, y){
           append(list(name = x), y)
         })}
-      y_text <- "log(New cases)"
+      y_text <- "New cases per million per day"      
+    } else {
+      dhc <- dp() %>%
+        group_by(Country) %>%
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases))
+        )) %>%
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}
+      y_text <- "New cases"
     }
   
     highchart() %>% 
@@ -262,7 +252,22 @@ server <- function(input, output, session) {
     
   })
 
+  observe({
+    if(input$tabs == "ECDPC Highcharts plot") {
+      updateCheckboxInput(session, inputId = "checkSmooth", value = FALSE)
+      updateCheckboxInput(session, inputId = "checkConfidenceInterval", value = FALSE)
+      shinyjs::disable("checkSmooth")
+      shinyjs::disable("checkConfidenceInterval")
+    } else if(input$tabs == "ECDPC ggplot") {
+      shinyjs::enable("checkSmooth")
+      shinyjs::enable("checkConfidenceInterval")
+    }
+  })
 
+  # Disable buttons at start
+  shinyjs::disable("checkSmooth")
+  shinyjs::disable("checkConfidenceInterval")
+  
   # End application after closing a window or tab ---------------------------
   session$onSessionEnded(stopApp)
 }

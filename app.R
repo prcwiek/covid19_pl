@@ -1,6 +1,7 @@
 library(DT)
 library(ggthemes)
 library(highcharter)
+library(lubridate)
 library(shiny)
 library(shinyjs)
 library(tidyverse)
@@ -80,7 +81,7 @@ ui <- fluidPage(
   
   titlePanel("COVID-19 cases in Poland"),
                 sidebarLayout(
-                  sidebarPanel(
+                  sidebarPanel(width = 2,
                     dateInput(
                       "sdate",
                       "Start date:",
@@ -97,11 +98,9 @@ ui <- fluidPage(
                       min = min(dx$dateRep),
                       max = max(dx$dateRep)
                     ),
-#                    checkboxInput("checkRawData", label = "Show raw data", value = TRUE),
                     checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = FALSE),
                     checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
-#                    checkboxInput("logScale", label = "Logarithmic scale", value = FALSE),
                     checkboxGroupInput(
                       "checkCountries",
                       label = h4("Select countries"),
@@ -110,10 +109,23 @@ ui <- fluidPage(
                     )
                   ),
                   
-                  mainPanel(
+                  mainPanel(width = 10,
                     tabsetPanel(id = "tabs",
                       tabPanel("ECDPC Highcharts plot", 
                                highchartOutput("covid_hc_plot", height = 600),
+                               h4("Data source:"),
+                               p("European Centre for Disease Prevention and Control"),
+                               a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                               ),
+                               br(),br(),
+                               p("Data last updated on : ", max(dx$dateRep)),
+                               br(),
+                               p("Prepared with Highcharts"),
+                               a("www.highcharts.com/",
+                                 href = "https://www.highcharts.com/")),
+                      tabPanel("ECDPC Highcharts bar plot", 
+                               highchartOutput("covid_hc_barplot", height = 600),
                                h4("Data source:"),
                                p("European Centre for Disease Prevention and Control"),
                                a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
@@ -165,9 +177,9 @@ server <- function(input, output, session) {
         Date,
         cases,
         case_sum = cumsum(cases),
-        cases_per_million,
+        cases_per_million
       ) %>% 
-      filter(Date > input$sdate & Date <= input$edate) %>% 
+      filter(Date >= input$sdate & Date <= input$edate) %>% 
       ungroup()
     
   })
@@ -197,7 +209,6 @@ server <- function(input, output, session) {
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date") +
-      #ylab("New cases per million per day") +
       scale_color_manual(values = dcolors)
       
     if(input$checkSmooth){
@@ -211,9 +222,10 @@ server <- function(input, output, session) {
   
   output$covidTable <- renderDataTable({
       dt <- dp()
-      names(dt) <- c("Country", "Date", "New cases", "Sum of new cases", "New cases per million")
+      names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", "New cases per million")
       dt[,5] <- round(dt[,5], 2)
-      dt}
+      dt
+      }
   )
     
   output$covid_hc_plot <- renderHighchart({
@@ -243,7 +255,6 @@ server <- function(input, output, session) {
     highchart() %>% 
       hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
       hc_add_series_list(dhc) %>%
-      #hc_xAxis(type = "datetime") %>% 
       hc_xAxis(categories = unique(dp()$Date)) %>% 
       hc_yAxis(title = list(text = y_text)) %>% 
       hc_tooltip(table = TRUE,
@@ -252,15 +263,49 @@ server <- function(input, output, session) {
     
   })
 
+  output$covid_hc_barplot <- renderHighchart({
+    
+    
+
+    # change summary to months ------------------------------------------------
+    if((input$edate - input$sdate) > 30) {
+      dbarp <- dp() %>% 
+        mutate(nmonth = month(Date),
+               nyear = year(Date)) %>% 
+        group_by(Country, nmonth, nyear) %>% 
+        summarise(case_sum = max(case_sum)) %>% 
+        ungroup() %>% 
+        mutate(Date = as.Date(make_datetime(year = nyear, month = nmonth, day = 1)))
+        hchart(dbarp, 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
+          hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+          hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
+          hc_colors(dcolors)
+        
+    } else {
+      hchart(dp(), 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
+        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
+        hc_colors(dcolors)
+      
+    }
+  })
+    
+
   observe({
     if(input$tabs == "ECDPC Highcharts plot") {
       updateCheckboxInput(session, inputId = "checkSmooth", value = FALSE)
       updateCheckboxInput(session, inputId = "checkConfidenceInterval", value = FALSE)
       shinyjs::disable("checkSmooth")
       shinyjs::disable("checkConfidenceInterval")
+      shinyjs::enable("casespm")
     } else if(input$tabs == "ECDPC ggplot") {
       shinyjs::enable("checkSmooth")
       shinyjs::enable("checkConfidenceInterval")
+      shinyjs::enable("casespm")
+    } else if(input$tabs == "ECDPC Highcharts bar plot"){
+      shinyjs::disable("checkSmooth")
+      shinyjs::disable("checkConfidenceInterval")
+      shinyjs::disable("casespm")
     }
   })
 

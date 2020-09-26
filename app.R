@@ -190,17 +190,24 @@ server <- function(input, output, session) {
   
   output$covidPlot <- renderPlot({
     if(input$casespm) {
-        p <- ggplot(data = dp(),
-                    aes(x = Date, y = cases_per_million, color = Country)) +
+      p <- ggplot(data = dp(),
+                  aes(x = Date, y = cases_per_million, color = Country)) +
           geom_line() +
           ylab("New cases per million per day") +
           scale_y_continuous(breaks = round(seq(0, max(dp()$cases_per_million), by = 50), 0), limits = c(0,NA))
     } else {
-        p <- ggplot(data = dp(),
-                    aes(x = Date, y = cases, color = Country)) + 
+      if(max(dp()$cases) - min(dp()$cases) > 4000 & max(dp()$cases) - min(dp()$cases) < 10000) {
+        by_ticks = 1000
+      } else if(max(dp()$cases) - min(dp()$cases) > 10000) {
+        by_ticks = 2500
+      } else {
+        by_ticks = 250
+      }
+      p <- ggplot(data = dp(),
+                  aes(x = Date, y = cases, color = Country)) + 
           geom_line() + 
           ylab("New cases") +
-          scale_y_continuous(breaks = round(seq(min(dp()$cases), max(dp()$cases), by = 250), 0), limits = c(0,NA))
+          scale_y_continuous(breaks = round(seq(min(dp()$cases), max(dp()$cases), by = by_ticks), 0), limits = c(0,NA))
     }
     
     # add common part ---------------------------------------------------------

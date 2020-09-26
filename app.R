@@ -61,10 +61,14 @@ cl <- list("Poland" = 1,
 # add countries id to dx --------------------------------------------------
 dcl <-  data.frame(countriesAndTerritories = names(cl),
                    id_country = unlist(matrix(cl)))
+
+dcl$countriesAndTerritories <- str_replace_all(dcl$countriesAndTerritories, pattern = "United Kingdom", replacement = "United_Kingdom")
+
 dx <- dx %>%
   left_join(dcl, by = "countriesAndTerritories") %>%
   filter(!is.na(id_country)) %>%
-  filter(cases >= 0)
+  filter(cases >= 0) %>% 
+  mutate(countriesAndTerritories = str_replace_all(countriesAndTerritories, pattern = "United_Kingdom", replacement = "United Kingdom"))
 rm(dcl)
 
 # colors ------------------------------------------------------------------

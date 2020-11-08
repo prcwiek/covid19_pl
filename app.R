@@ -203,8 +203,9 @@ server <- function(input, output, session) {
       p <- ggplot(data = dp(),
                   aes(x = Date, y = cases_per_100k, color = Country)) +
         geom_line() +
+        geom_hline(yintercept = 75, color = "black", linetype = "dashed") +
         geom_hline(yintercept = 70, color = "black", linetype = "dashed") +
-        annotate("text", x = input$sdate + 2 , y = 70, vjust = -1, color = "black",
+        annotate("text", x = input$sdate + 2 , y = 70, vjust = -0.5, color = "black",
                  label = "Poland - lockdown limit, 7 days average") +
         geom_hline(yintercept = 50, color = "red", linetype = "dashed") +
         annotate("text", x = input$sdate + 2 , y = 50, vjust = -1, color = "red",
@@ -302,7 +303,8 @@ server <- function(input, output, session) {
         hc_add_series_list(dhc) %>%
         hc_xAxis(categories = unique(dp()$Date)) %>% 
         hc_yAxis(title = list(text = y_text),
-                 plotLines = list(list(value = 70, color = "black", width = 2, dashStyle = "shortdash",
+                 plotLines = list(list(value = 75, color = "black", width = 2, dashStyle = "shortdash"),
+                                  list(value = 70, color = "black", width = 2, dashStyle = "shortdash",
                                        label = list(text = "Poland - lockdown limit, 7 days average",
                                                     style = list(color = "black", fontWeight = "bold"))),
                                   list(value = 50, color = "red", width = 2, dashStyle = "shortdash",

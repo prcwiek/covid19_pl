@@ -110,7 +110,7 @@ ui <- fluidPage(
                       "checkCountries",
                       label = h4("Select countries"),
                       choices = cl,
-                      selected = c(1, 2, 7, 13, 16, 17, 23, 26)
+                      selected = c(1, 7, 11, 13, 17, 23, 26)
                     )
                   ),
                   

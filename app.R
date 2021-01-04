@@ -6,11 +6,15 @@ library(shiny)
 library(shinyjs)
 library(tidyverse)
 
-# Data from ---------------------------------------------------------------
-# https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-dx <-read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv",
-              na.strings = "",
-              fileEncoding = "UTF-8-BOM")
+# # Data from ---------------------------------------------------------------
+# # https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
+# dx <-read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv",
+#               na.strings = "",
+#               fileEncoding = "UTF-8-BOM")
+
+download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx", 
+              destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
+dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 
 # change date format ------------------------------------------------------
 tryCatch(

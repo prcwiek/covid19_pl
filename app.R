@@ -85,82 +85,92 @@ dcolors <- c("red", "cyan", "green", "orange", "darkblue",
              "deeppink", "brown", "bisque")
 
 ui <- fluidPage(
-  
+
   shinyjs::useShinyjs(),
   
-  titlePanel("COVID-19 cases in Poland"),
-                sidebarLayout(
-                  sidebarPanel(width = 2,
-                    dateInput(
-                      "sdate",
-                      "Start date:",
-                      value = "2020-03-07",
-                      format = "yyyy-mm-dd",
-                      min = "2020-03-07",
-                      max = max(dx$dateRep)
-                    ),
-                    dateInput(
-                      "edate",
-                      "End date:",
-                      value = max(dx$dateRep),
-                      format = "yyyy-mm-dd",
-                      min = min(dx$dateRep),
-                      max = max(dx$dateRep)
-                    ),
-                    checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = FALSE),
-                    checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
-                    checkboxInput("casespm", label = "New cases per million", value = FALSE),
-                    checkboxInput("casesp100", label = "New cases per 100,000", value = FALSE),
-                    checkboxGroupInput(
-                      "checkCountries",
-                      label = h4("Select countries"),
-                      choices = cl,
-                      selected = c(1, 7, 11, 13, 17, 23, 26)
+  navbarPage(theme = bslib::bs_theme(version = 4, bootswatch = "cerulean", primary = "#FF0018", secondary = "#FF0018"),
+             title = "COVID-19 cases in Poland",
+             tabPanel("Daily data",
+                      #titlePanel("COVID-19 cases in Poland"),
+                      sidebarLayout(
+                        sidebarPanel(width = 2,
+                                     dateInput(
+                                       "sdate",
+                                       "Start date:",
+                                       value = "2020-03-07",
+                                       format = "yyyy-mm-dd",
+                                       min = "2020-03-07",
+                                       max = max(dx$dateRep)
+                                     ),
+                                     dateInput(
+                                       "edate",
+                                       "End date:",
+                                       value = max(dx$dateRep),
+                                       format = "yyyy-mm-dd",
+                                       min = min(dx$dateRep),
+                                       max = max(dx$dateRep)
+                                     ),
+                                     checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = FALSE),
+                                     checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
+                                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
+                                     checkboxInput("casesp100", label = "New cases per 100,000", value = FALSE),
+                                     checkboxGroupInput(
+                                       "checkCountries",
+                                       label = h5("Select countries"),
+                                       choices = cl,
+                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                     )
+                        ),
+                        
+                        mainPanel(width = 10,
+                                  tabsetPanel(id = "tabs",
+                                              tabPanel("ECDPC Highcharts plot", 
+                                                       highchartOutput("covid_hc_plot", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                                                       ),
+                                                       br(),br(),
+                                                       p("Data available until  ", max(dx$dateRep)),
+                                                       br(),
+                                                       p("Prepared with Highcharts"),
+                                                       a("www.highcharts.com/",
+                                                         href = "https://www.highcharts.com/")),
+                                              tabPanel("ECDPC Highcharts bar plot", 
+                                                       highchartOutput("covid_hc_barplot", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                                                       ),
+                                                       br(),br(),
+                                                       p("Data available until  ", max(dx$dateRep)),
+                                                       br(),
+                                                       p("Prepared with Highcharts"),
+                                                       a("www.highcharts.com/",
+                                                         href = "https://www.highcharts.com/")),
+                                              tabPanel("ECDPC table", dataTableOutput("covidTable")),
+                                              tabPanel("ECDPC ggplot",
+                                                       plotOutput("covidPlot", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a(
+                                                         "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+                                                       ),
+                                                       br(),br(),
+                                                       p("Data available until  ", max(dx$dateRep)))
+                                  )
+                        )
                     )
-                  ),
-                  
-                  mainPanel(width = 10,
-                    tabsetPanel(id = "tabs",
-                      tabPanel("ECDPC Highcharts plot", 
-                               highchartOutput("covid_hc_plot", height = 600),
-                               h4("Data source:"),
-                               p("European Centre for Disease Prevention and Control"),
-                               a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
-                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
-                               ),
-                               br(),br(),
-                               p("Data last updated on : ", max(dx$dateRep)),
-                               br(),
-                               p("Prepared with Highcharts"),
-                               a("www.highcharts.com/",
-                                 href = "https://www.highcharts.com/")),
-                      tabPanel("ECDPC Highcharts bar plot", 
-                               highchartOutput("covid_hc_barplot", height = 600),
-                               h4("Data source:"),
-                               p("European Centre for Disease Prevention and Control"),
-                               a("www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
-                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
-                               ),
-                               br(),br(),
-                               p("Data last updated on : ", max(dx$dateRep)),
-                               br(),
-                               p("Prepared with Highcharts"),
-                               a("www.highcharts.com/",
-                                 href = "https://www.highcharts.com/")),
-                      tabPanel("ECDPC table", dataTableOutput("covidTable")),
-                      tabPanel("ECDPC ggplot",
-                               plotOutput("covidPlot", height = 600),
-                               h4("Data source:"),
-                               p("European Centre for Disease Prevention and Control"),
-                               a(
-                                 "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide",
-                                 href = "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
-                               ),
-                               br(),br(),
-                               p("Data last updated on : ", max(dx$dateRep)))
-                  )
-                )
-))
+  
+            ),
+            tabPanel("Weekly data")
+  
+             
+  )
+)
 
 server <- function(input, output, session) {
   

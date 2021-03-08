@@ -17,6 +17,9 @@ download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19
               destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 
+dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv")
+#load("others/dw.RData")
+
 # change date format ------------------------------------------------------
 tryCatch(
   expr = {
@@ -74,6 +77,13 @@ dx <- dx %>%
   filter(!is.na(id_country)) %>%
   filter(cases >= 0) %>% 
   mutate(countriesAndTerritories = str_replace_all(countriesAndTerritories, pattern = "United_Kingdom", replacement = "United Kingdom"))
+
+names(dcl) <- c("country", "id_country")
+
+dw <- dw %>% 
+  left_join(dcl, by = "country")
+  
+
 rm(dcl)
 
 # colors ------------------------------------------------------------------
@@ -166,9 +176,44 @@ ui <- fluidPage(
                     )
   
             ),
-            tabPanel("Weekly data")
-  
-             
+            
+            tabPanel("Weekly data",
+                     sidebarLayout(
+                       sidebarPanel(width = 2,
+                                    dateInput(
+                                      "sdate_w",
+                                      "Start date:",
+                                      value = "2020-03-07",
+                                      format = "yyyy-mm-dd",
+                                      min = "2020-03-07",
+                                      max = max(dx$dateRep)
+                                    ),
+                                    dateInput(
+                                      "edate_w",
+                                      "End date:",
+                                      value = max(dx$dateRep),
+                                      format = "yyyy-mm-dd",
+                                      min = min(dx$dateRep),
+                                      max = max(dx$dateRep)
+                                    ),
+                                    checkboxInput("checkSmooth_w", label = "Smoothed conditional mean", value = FALSE),
+                                    checkboxInput("checkConfidenceInterval_w", label = "Show confidence interval", value = FALSE),
+                                    checkboxInput("casespm_w", label = "New cases per million", value = FALSE),
+                                    checkboxGroupInput(
+                                      "checkCountries_w",
+                                      label = h5("Select countries"),
+                                      choices = cl,
+                                      selected = c(1, 7, 11, 13, 17, 23, 26)
+                                    )
+                       ),
+                       
+                       mainPanel(width = 10,
+                                 tabsetPanel(id = "tabs_w",
+                                             tabPanel("ECDPC table", dataTableOutput("covidTable_w"))
+                                 )
+                       )
+                     )
+            )
   )
 )
 
@@ -207,6 +252,15 @@ server <- function(input, output, session) {
     
   })
   
+  dpw <- reactive({
+    req(input$sdate_w, input$edate_w, input$checkCountries_w)
+    
+    dw <- dw %>% 
+      filter(id_country %in% input$checkCountries_w) %>% 
+      select(-id_country)
+    
+  })
+    
   output$covidPlot <- renderPlot({
     if(input$casespm) {
       p <- ggplot(data = dp(),
@@ -278,7 +332,19 @@ server <- function(input, output, session) {
       dt
       }
   )
-    
+   
+  # Mon Mar  8 21:27:44 2021 ------------------------------
+  # weekly table
+  output$covidTable_w <- renderDataTable({
+    dt <- dpw()
+    # names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
+    #                "New cases per million", "New cases per 100,000")
+    # dt[,5] <- round(dt[,5], 2)
+    # dt[,6] <- round(dt[,6], 2)
+    dt
+  }
+  )
+  
   output$covid_hc_plot <- renderHighchart({
     if(input$casespm) {
       dhc <- dp() %>%

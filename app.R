@@ -7,16 +7,15 @@ library(shiny)
 library(shinyjs)
 library(tidyverse)
 
-# # Data from ---------------------------------------------------------------
-# # https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-# dx <-read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv",
-#               na.strings = "",
-#               fileEncoding = "UTF-8-BOM")
-
-download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx", 
+# Data from ---------------------------------------------------------------
+# https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
+download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx",
               destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
+#load("others/dx.RData")
 
+# Data from ---------------------------------------------------------------
+# https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19
 dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv")
 #load("others/dw.RData")
 
@@ -80,11 +79,20 @@ dx <- dx %>%
 
 names(dcl) <- c("country", "id_country")
 
+# 2019 population data for appending to dw
+dx_population <- dx %>% select(id_country, popData2019)
+
 dw <- dw %>% 
-  left_join(dcl, by = "country")
-  
+  left_join(dcl, by = "country") %>% 
+  mutate(Date = as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")) +
+           as.numeric(str_sub(year_week, -2, -1)) * 7 - 
+           as.numeric(format(as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")), format = "%w"))) %>% 
+  left_join(dx_population, by = "id_country")
+
+names(dw) <- gsub(pattern = "^country$", "Country", names(dw))
 
 rm(dcl)
+rm(dx_population)
 
 # colors ------------------------------------------------------------------
 dcolors <- c("red", "cyan", "green", "orange", "darkblue",
@@ -100,6 +108,53 @@ ui <- fluidPage(
   
   navbarPage(theme = bslib::bs_theme(version = 4, bootswatch = "cerulean", primary = "#FF0018", secondary = "#FF0018"),
              title = "COVID-19 cases in Poland",
+             
+             tabPanel("Weekly data",
+                      sidebarLayout(
+                        sidebarPanel(width = 2,
+                                     dateInput(
+                                       "sdate_w",
+                                       "Start date:",
+                                       value = "2020-03-07",
+                                       format = "yyyy-mm-dd",
+                                       min = min(dw$Date),
+                                       max = max(dw$Date)
+                                     ),
+                                     dateInput(
+                                       "edate_w",
+                                       "End date:",
+                                       value = max(dw$Date),
+                                       format = "yyyy-mm-dd",
+                                       min = "2020-03-07",
+                                       max = max(dw$Date)
+                                     ),
+                                     checkboxInput("checkSmooth_w", label = "Smoothed conditional mean", value = FALSE),
+                                     checkboxInput("checkConfidenceInterval_w", label = "Show confidence interval", value = FALSE),
+                                     checkboxInput("casesp100_w", label = "New cases per 100,000", value = FALSE),
+                                     checkboxInput("casespm_w", label = "New cases per million", value = FALSE),
+                                     checkboxGroupInput(
+                                       "checkCountries_w",
+                                       label = h5("Select countries"),
+                                       choices = cl,
+                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                     )
+                        ),
+                        
+                        mainPanel(width = 10,
+                                  tabsetPanel(id = "tabs_w",
+                                              tabPanel("EDPC weekly cases ggplot", plotOutput("new_weekly_cases"),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a(
+                                                         "https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19"
+                                                       )),
+                                              tabPanel("ECDPC table", dataTableOutput("covidTable_w"))
+                                  )
+                        )
+                      )
+             ),
+             
              tabPanel("Daily data",
                       #titlePanel("COVID-19 cases in Poland"),
                       sidebarLayout(
@@ -122,8 +177,8 @@ ui <- fluidPage(
                                      ),
                                      checkboxInput("checkSmooth", label = "Smoothed conditional mean", value = FALSE),
                                      checkboxInput("checkConfidenceInterval", label = "Show confidence interval", value = FALSE),
-                                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
                                      checkboxInput("casesp100", label = "New cases per 100,000", value = FALSE),
+                                     checkboxInput("casespm", label = "New cases per million", value = FALSE),
                                      checkboxGroupInput(
                                        "checkCountries",
                                        label = h5("Select countries"),
@@ -175,45 +230,8 @@ ui <- fluidPage(
                         )
                     )
   
-            ),
-            
-            tabPanel("Weekly data",
-                     sidebarLayout(
-                       sidebarPanel(width = 2,
-                                    dateInput(
-                                      "sdate_w",
-                                      "Start date:",
-                                      value = "2020-03-07",
-                                      format = "yyyy-mm-dd",
-                                      min = "2020-03-07",
-                                      max = max(dx$dateRep)
-                                    ),
-                                    dateInput(
-                                      "edate_w",
-                                      "End date:",
-                                      value = max(dx$dateRep),
-                                      format = "yyyy-mm-dd",
-                                      min = min(dx$dateRep),
-                                      max = max(dx$dateRep)
-                                    ),
-                                    checkboxInput("checkSmooth_w", label = "Smoothed conditional mean", value = FALSE),
-                                    checkboxInput("checkConfidenceInterval_w", label = "Show confidence interval", value = FALSE),
-                                    checkboxInput("casespm_w", label = "New cases per million", value = FALSE),
-                                    checkboxGroupInput(
-                                      "checkCountries_w",
-                                      label = h5("Select countries"),
-                                      choices = cl,
-                                      selected = c(1, 7, 11, 13, 17, 23, 26)
-                                    )
-                       ),
-                       
-                       mainPanel(width = 10,
-                                 tabsetPanel(id = "tabs_w",
-                                             tabPanel("ECDPC table", dataTableOutput("covidTable_w"))
-                                 )
-                       )
-                     )
             )
+            
   )
 )
 
@@ -256,8 +274,12 @@ server <- function(input, output, session) {
     req(input$sdate_w, input$edate_w, input$checkCountries_w)
     
     dw <- dw %>% 
+      filter(indicator == "cases") %>% 
       filter(id_country %in% input$checkCountries_w) %>% 
-      select(-id_country)
+      select(-id_country) %>% 
+      mutate(cases_per_million = round(weekly_count / (popData2019 / 1000000), 0),
+             cases_per_100k = round(weekly_count / (popData2019 / 100000), 0)) %>% 
+      filter(Date >= input$sdate_w & Date <= input$edate_w)
     
   })
     
@@ -333,17 +355,7 @@ server <- function(input, output, session) {
       }
   )
    
-  # Mon Mar  8 21:27:44 2021 ------------------------------
-  # weekly table
-  output$covidTable_w <- renderDataTable({
-    dt <- dpw()
-    # names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
-    #                "New cases per million", "New cases per 100,000")
-    # dt[,5] <- round(dt[,5], 2)
-    # dt[,6] <- round(dt[,6], 2)
-    dt
-  }
-  )
+
   
   output$covid_hc_plot <- renderHighchart({
     if(input$casespm) {
@@ -441,6 +453,61 @@ server <- function(input, output, session) {
     }
   })
     
+  # Mon Mar  8 21:27:44 2021 ------------------------------
+  # weekly table
+  output$covidTable_w <- renderDataTable({
+    dt <- dpw()
+    # names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
+    #                "New cases per million", "New cases per 100,000")
+    # dt[,5] <- round(dt[,5], 2)
+    # dt[,6] <- round(dt[,6], 2)
+    dt
+  }
+  )
+  
+  # Sat Mar 20 20:50:55 2021 ------------------------------
+  output$new_weekly_cases <- renderPlot({
+    #dw_p <- dpw()
+    if(input$casespm_w) {
+      p <- ggplot(data = dpw(),
+                  aes(x = Date, y = cases_per_million, color = Country)) +
+        geom_line() +
+        ylab("New weekly cases per million per day") +
+        scale_y_continuous(breaks = round(seq(0, max(dpw()$cases_per_million), by = 2000), 0), limits = c(0,NA))
+    } else if(input$casesp100_w) {
+      p <- ggplot(data = dpw(),
+                  aes(x = Date, y = cases_per_100k, color = Country)) +
+        geom_line() +
+        ylab("New weekly cases per 100,000 per day") +
+        scale_y_continuous(breaks = round(seq(0, max(dpw()$cases_per_100k), by = 100), 0), limits = c(0,NA))
+    } else {
+      p <- ggplot(data = dpw(),
+                  aes(x = Date, y = weekly_count, color = Country)) +
+        geom_line() +
+        ylab("New weekly cases") +
+        scale_y_continuous(breaks = round(seq(0, max(dpw()$weekly_count), by = 10000), 0), limits = c(0,NA))
+    }
+    
+    # add common part ---------------------------------------------------------
+    if((input$edate_w - input$sdate_w) <= 30) {
+      p <- p + scale_x_date(date_breaks = "1 week", date_labels = "%Y-%m-%d")
+    } else {
+      p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m-%d")
+    }
+    p <- p + theme_gdocs() +
+      scale_fill_manual(values = dcolors) +
+      theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+      xlab("Date") +
+      scale_color_manual(values = dcolors)
+    
+    if(input$checkSmooth_w){
+      p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
+                           se = input$checkConfidenceInterval_w)
+    }
+    
+    p
+  })
+  
 
   observe({
     if(input$tabs == "ECDPC Highcharts plot") {

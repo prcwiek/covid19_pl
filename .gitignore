@@ -13,6 +13,8 @@
 /*.Rcheck/
 # RStudio files
 .Rproj.user/
+.Rproj
+covid19_pl.Rproj
 # produced vignettes
 vignettes/*.html
 vignettes/*.pdf

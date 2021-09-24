@@ -7,17 +7,22 @@ library(shiny)
 library(shinyjs)
 library(tidyverse)
 
-# Data from ---------------------------------------------------------------
+# Daily data until 2020-12-14 from -----------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
 download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx",
             destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 #load("others/dx.RData")
 
-# Data from ---------------------------------------------------------------
+# 14 days data from --------------------------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19
 dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv")
 #load("others/dw.RData")
+
+# New daily data ----------------------------------------------------------
+# https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country
+dxn <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv")
+#load("others/dxn.RData")
 
 # change date format ------------------------------------------------------
 tryCatch(
@@ -71,21 +76,32 @@ dcl <-  data.frame(countriesAndTerritories = names(cl),
 
 dcl$countriesAndTerritories <- str_replace_all(dcl$countriesAndTerritories, pattern = "United Kingdom", replacement = "United_Kingdom")
 
+# processing dx with old data until 2020-12-14 ----------------------------
 dx <- dx %>%
   left_join(dcl, by = "countriesAndTerritories") %>%
   filter(!is.na(id_country)) %>%
   filter(cases >= 0) %>% 
   mutate(countriesAndTerritories = str_replace_all(countriesAndTerritories, pattern = "United_Kingdom", replacement = "United Kingdom"))
 
-names(dcl) <- c("country", "id_country")
+# processing dxn with new data --------------------------------------------
+dxn <- dxn %>%
+  left_join(dcl, by = "countriesAndTerritories") %>%
+  filter(!is.na(id_country)) %>%
+  filter(cases >= 0) %>% 
+  mutate(dateRep = as.Date(dateRep, format = "%d/%m/%Y"))
+  #filter(dateRep != min(dateRep))
 
 # 2019 population data for appending to dw
+names(dcl) <- c("country", "id_country")
+
 dx_population <- dx %>% 
   select(id_country, popData2019) %>% 
   distinct()
 
+dcl$country <- str_replace_all(dcl$country, pattern = "United_Kingdom", replacement = "United Kingdom")
 dw <- dw %>% 
   left_join(dcl, by = "country") %>% 
+  filter(!is.na(id_country)) %>%
   mutate(Date = as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")) +
            as.numeric(str_sub(year_week, -2, -1)) * 7 - 
            as.numeric(format(as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")), format = "%w"))) %>% 
@@ -110,6 +126,74 @@ ui <- fluidPage(
   
   navbarPage(theme = bslib::bs_theme(version = 4, bootswatch = "cerulean", primary = "#FF0018", secondary = "#FF0018"),
              title = "COVID-19 cases in Poland",
+             
+             tabPanel("New daily data",
+                      #titlePanel("COVID-19 cases in Poland"),
+                      sidebarLayout(
+                        sidebarPanel(id = "sp3", width = 2,
+                                     dateInput(
+                                       "sdate_n",
+                                       "Start date:",
+                                       value = max(dxn$dateRep) - 90,
+                                       format = "yyyy-mm-dd",
+                                       min = min(dxn$dateRep) + 2,
+                                       max = max(dxn$dateRep)
+                                     ),
+                                     dateInput(
+                                       "edate_n",
+                                       "End date:",
+                                       value = max(dxn$dateRep),
+                                       format = "yyyy-mm-dd",
+                                       min = min(dxn$dateRep) + 2,
+                                       max = max(dxn$dateRep)
+                                     ),
+                                     checkboxInput("checkSmooth_n", label = "Smoothed conditional mean", value = FALSE),
+                                     checkboxInput("checkConfidenceInterval_n", label = "Show confidence interval", value = FALSE),
+                                     checkboxInput("casesp100_n", label = "New cases per 100,000", value = FALSE),
+                                     checkboxInput("casespm_n", label = "New cases per million", value = FALSE),
+                                     checkboxGroupInput(
+                                       "checkCountries_n",
+                                       label = h5("Select countries"),
+                                       choices = cl,
+                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                     )
+                        ),
+                        
+                        mainPanel(width = 10,
+                                  tabsetPanel(id = "tabs_n",
+                                              tabPanel("ECDPC Highcharts plot", 
+                                                       highchartOutput("covid_hc_plot_n", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a("https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country"
+                                                       ),
+                                                       br(),
+                                                       p("Prepared with Highcharts"),
+                                                       a("www.highcharts.com/",
+                                                         href = "https://www.highcharts.com/")),
+                                              tabPanel("ECDPC Highcharts bar plot", 
+                                                       highchartOutput("covid_hc_barplot_n", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a("https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country"
+                                                       ),
+                                                       br(),
+                                                       p("Prepared with Highcharts"),
+                                                       a("www.highcharts.com/",
+                                                         href = "https://www.highcharts.com/")),
+                                              tabPanel("ECDPC table", dataTableOutput("covidTable_n")),
+                                              tabPanel("ECDPC ggplot",
+                                                       plotOutput("covidPlot_n", height = 600),
+                                                       h4("Data source:"),
+                                                       p("European Centre for Disease Prevention and Control"),
+                                                       a("https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country",
+                                                         href = "https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country"))
+                                  )
+                        )
+                      )
+             ),
              
              tabPanel("Weekly data",
                       sidebarLayout(
@@ -166,7 +250,7 @@ ui <- fluidPage(
                       )
              ),
              
-             tabPanel("Daily data",
+             tabPanel("Daily data until 2020-12-14",
                       #titlePanel("COVID-19 cases in Poland"),
                       sidebarLayout(
                         sidebarPanel(id = "sp2", width = 2,
@@ -279,6 +363,38 @@ server <- function(input, output, session) {
     
   })
   
+  dpn <- reactive({
+    req(input$sdate_n, input$edate_n, input$checkCountries_n)
+    
+    dxn %>%
+      filter(id_country %in% input$checkCountries_n) %>%
+      mutate(
+        Date = as.Date(dateRep),
+        cases_per_million = round(cases / (popData2020 / 1000000), 0),
+        cases_per_100k = round(cases / (popData2020 / 100000), 0),
+        Country = countriesAndTerritories
+      ) %>%
+      select(Date,
+             Country,
+             cases,
+             deaths,
+             popData2020,
+             cases_per_million,
+             cases_per_100k) %>%
+      filter(complete.cases(.)) %>%
+      arrange(Date) %>%
+      group_by(Country) %>%
+      summarise(
+        Date,
+        cases,
+        case_sum = cumsum(cases),
+        cases_per_million,
+        cases_per_100k
+      ) %>% 
+      filter(Date >= input$sdate_n & Date <= input$edate_n) %>% 
+      ungroup()
+  })
+  
   dpw <- reactive({
     req(input$sdate_w, input$edate_w, input$checkCountries_w)
     
@@ -353,6 +469,70 @@ server <- function(input, output, session) {
     p
     
   })
+
+# Fri Sep 24 15:41:29 2021 ------------------------------
+# new daily cases plot
+  output$covidPlot_n <- renderPlot({
+    if(input$casespm_n) {
+      p <- ggplot(data = dpn(),
+                  aes(x = Date, y = cases_per_million, color = Country)) +
+        geom_line() +
+        ylab("New cases per million per day") +
+        scale_y_continuous(breaks = round(seq(0, max(dpn()$cases_per_million), by = 50), 0), limits = c(0,NA))
+    } else if(input$casesp100_n) {
+      p <- ggplot(data = dpn(),
+                  aes(x = Date, y = cases_per_100k, color = Country)) +
+        geom_line() +
+        geom_hline(yintercept = 75, color = "black", linetype = "dashed") +
+        geom_hline(yintercept = 70, color = "black", linetype = "dashed") +
+        annotate("text", x = input$sdate_n + 2 , y = 70, vjust = -0.5, color = "black",
+                 label = "Poland - lockdown limit, 7 days average") +
+        geom_hline(yintercept = 50, color = "red", linetype = "dashed") +
+        annotate("text", x = input$sdate_n + 2 , y = 50, vjust = -1, color = "red",
+                 label = "Poland - red zone upper limit, 7 days average") +
+        geom_hline(yintercept = 25, color = "red", linetype = "dashed") +
+        annotate("text", x = input$sdate_n + 2 , y = 25, vjust = -1, color = "red",
+                 label = "Poland - red zone lower limit, 7 days average") +
+        geom_hline(yintercept = 10, color = "#ffcc00", linetype = "dashed") +
+        annotate("text", x = input$sdate_n + 2 , y = 10, vjust = -1, color = "#ffcc00",
+                 label = "Poland - yellow zone limit, 7 days average") +
+        ylab("New cases per 100,000 per day") +
+        scale_y_continuous(breaks = round(seq(0, max(dpn()$cases_per_100k), by = 10), 0), limits = c(0,NA))
+    } else {
+      if(max(dpn()$cases) - min(dpn()$cases) > 4000 & max(dpn()$cases) - min(dpn()$cases) < 10000) {
+        by_ticks = 1000
+      } else if(max(dpn()$cases) - min(dpn()$cases) > 10000) {
+        by_ticks = 2500
+      } else {
+        by_ticks = 250
+      }
+      p <- ggplot(data = dpn(),
+                  aes(x = Date, y = cases, color = Country)) + 
+        geom_line() + 
+        ylab("New cases") +
+        scale_y_continuous(breaks = round(seq(min(dpn()$cases), max(dpn()$cases), by = by_ticks), 0), limits = c(0,NA))
+    }
+    
+    # add common part ---------------------------------------------------------
+    if((input$edate_n - input$sdate_n) <= 30) {
+      p <- p + scale_x_date(date_breaks = "1 day", date_labels = "%Y-%m-%d")
+    } else {
+      p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m")
+    }
+    p <- p + theme_gdocs() +
+      scale_fill_manual(values = dcolors) +
+      theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+      xlab("Date") +
+      scale_color_manual(values = dcolors)
+    
+    if(input$checkSmooth_n){
+      p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
+                           se = input$checkConfidenceInterval_n)
+    }
+    
+    p
+    
+  })
   
   output$covidTable <- renderDataTable({
       dt <- dp()
@@ -363,7 +543,30 @@ server <- function(input, output, session) {
       dt
       }
   )
-   
+
+  # Mon Mar  8 21:27:44 2021 ------------------------------
+  # weekly table
+  output$covidTable_w <- renderDataTable({
+    dt <- dpw() %>% 
+      select(Country, Date, weekly_count, cumulative_count, cases_per_million, cases_per_100k)
+    names(dt) <- c("Country", "Date", "New weekly cases", "Sum of all cases per country", 
+                   "New cases per million", "New cases per 100,000")
+    dt[,5] <- round(dt[,5], 2)
+    dt[,6] <- round(dt[,6], 2)
+    dt
+  })
+  
+  # Thu Sep 23 21:59:08 2021 ------------------------------
+  # new daily cases
+  output$covidTable_n <- renderDataTable({
+    dt <- dpn()
+    names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
+                   "New cases per million", "New cases per 100,000")
+    dt[,5] <- round(dt[,5], 2)
+    dt[,6] <- round(dt[,6], 2)
+    dt
+  })
+  
   output$covid_hc_plot <- renderHighchart({
     if(input$casespm) {
       dhc <- dp() %>%
@@ -433,6 +636,77 @@ server <- function(input, output, session) {
     
   })
 
+# Fri Sep 24 16:01:29 2021 ------------------------------
+# new daily data Highchart plot
+  output$covid_hc_plot_n <- renderHighchart({
+    if(input$casespm_n) {
+      dhc <- dpn() %>%
+        group_by(Country) %>%
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases_per_million))
+        )) %>%
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}
+      y_text <- "New cases per million per day"      
+    } else if(input$casesp100_n) {
+      dhc <- dpn() %>%
+        group_by(Country) %>%
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases_per_100k))
+        )) %>%
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}
+      y_text <- "New cases per 100,000 per day"      
+    } else {
+      dhc <- dpn() %>%
+        group_by(Country) %>%
+        do(dhc = list(
+          data = list_parse2(data.frame(.$Date, .$cases))
+        )) %>%
+        {map2(.$Country, .$dhc, function(x, y){
+          append(list(name = x), y)
+        })}
+      y_text <- "New cases"
+    }
+    
+    if(input$casesp100_n){
+      highchart() %>% 
+        hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
+        hc_add_series_list(dhc) %>%
+        hc_xAxis(categories = unique(dpn()$Date)) %>% 
+        hc_yAxis(title = list(text = y_text),
+                 plotLines = list(list(value = 75, color = "black", width = 2, dashStyle = "shortdash"),
+                                  list(value = 70, color = "black", width = 2, dashStyle = "shortdash",
+                                       label = list(text = "Poland - lockdown limit, 7 days average",
+                                                    style = list(color = "black", fontWeight = "bold"))),
+                                  list(value = 50, color = "red", width = 2, dashStyle = "shortdash",
+                                       label = list(text = "Poland - red zone upper limit, 7 days average",
+                                                    style = list(color = "red", fontWeight = "bold"))),
+                                  list(value = 25, color = "red", width = 2, dashStyle = "shortdash",
+                                       label = list(text = "Poland - red zone lower limit, 7 days average",
+                                                    style = list(color = "red", fontWeight = "bold"))),
+                                  list(value = 10, color = "#ffcc00", width = 2, dashStyle = "shortdash",
+                                       label = list(text = "Poland - yellow zone limit, 7 days average",
+                                                    style = list(color = "#ffcc00", fontWeight = "bold"))))
+        ) %>% 
+        hc_tooltip(table = TRUE,
+                   sort = TRUE) %>% 
+        hc_colors(dcolors)
+    } else {
+      highchart() %>% 
+        hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
+        hc_add_series_list(dhc) %>%
+        hc_xAxis(categories = unique(dpn()$Date)) %>% 
+        hc_yAxis(title = list(text = y_text)) %>% 
+        hc_tooltip(table = TRUE,
+                   sort = TRUE) %>% 
+        hc_colors(dcolors)
+    }
+    
+  })
+  
   output$covid_hc_barplot <- renderHighchart({
     
     # change summary to months ------------------------------------------------
@@ -457,17 +731,37 @@ server <- function(input, output, session) {
       
     }
   })
+
+  # Fri Sep 24 17:59:18 2021 ------------------------------
+  # new daily data a    Highchart bar  plot
+  output$covid_hc_barplot_n <- renderHighchart({
     
-  # Mon Mar  8 21:27:44 2021 ------------------------------
-  # weekly table
-  output$covidTable_w <- renderDataTable({
-    dt <- dpw()
-    dt
+    # change summary to months ------------------------------------------------
+    if((input$edate_n - input$sdate_n) > 30) {
+      dbarp <- dpn() %>% 
+        mutate(nmonth = month(Date),
+               nyear = year(Date)) %>% 
+        group_by(Country, nmonth, nyear) %>% 
+        summarise(case_sum = max(case_sum)) %>% 
+        ungroup() %>% 
+        mutate(Date = as.Date(make_datetime(year = nyear, month = nmonth, day = 1)))
+      hchart(dbarp, 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
+        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
+        hc_colors(dcolors)
+      
+    } else {
+      hchart(dpn(), 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
+        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
+        hc_colors(dcolors)
+      
+    }
   })
+  
   
   # Sat Mar 20 20:50:55 2021 ------------------------------
   output$new_weekly_cases <- renderPlot({
-    #dw_p <- dpw()
     if(input$casespm_w) {
       p <- ggplot(data = dpw(),
                   aes(x = Date, y = cases_per_million, color = Country)) +
@@ -549,7 +843,6 @@ server <- function(input, output, session) {
                    sort = TRUE) %>% 
         hc_colors(dcolors)
   })
-  
 
   observeEvent(input$tabs, {
     if(input$tabs == "ECDPC Highcharts plot") {
@@ -591,6 +884,47 @@ server <- function(input, output, session) {
       shinyjs::enable("casesp100_w")
     }
   })
+
+  observeEvent(input$tabs_n, {
+    if(input$tabs_n == "ECDPC Highcharts plot") {
+      updateCheckboxInput(session, inputId = "checkSmooth_n", value = FALSE)
+      updateCheckboxInput(session, inputId = "checkConfidenceInterval_n", value = FALSE)
+      shinyjs::disable("checkSmooth_n")
+      shinyjs::disable("checkConfidenceInterval_n")
+      shinyjs::enable("casespm_n")
+      shinyjs::enable("casesp100_n")
+    } else if(input$tabs_n == "ECDPC ggplot") {
+      shinyjs::enable("checkSmooth_n")
+      shinyjs::enable("checkConfidenceInterval_n")
+      shinyjs::enable("casespm_n")
+      shinyjs::enable("casesp100_n")
+    } else if(input$tabs_n == "ECDPC Highcharts bar plot"){
+      updateCheckboxInput(session, inputId = "checkSmooth_n", value = FALSE)
+      updateCheckboxInput(session, inputId = "checkConfidenceInterval_n", value = FALSE)
+      updateCheckboxInput(session, inputId = "casespm_n", value = FALSE)
+      updateCheckboxInput(session, inputId = "casesp100_n", value = FALSE)
+      shinyjs::disable("checkSmooth_n")
+      shinyjs::disable("checkConfidenceInterval_n")
+      shinyjs::disable("casespm_n")
+      shinyjs::disable("casesp100_n")
+    }
+    # 
+    # 
+    # 
+    # if (input$tabs_n == "ECDPC Highcharts plot") {
+    #   updateCheckboxInput(session, inputId = "checkSmooth_n", value = FALSE)
+    #   updateCheckboxInput(session, inputId = "checkConfidenceInterval_n", value = FALSE)
+    #   shinyjs::disable("checkSmooth_n")
+    #   shinyjs::disable("checkConfidenceInterval_n")
+    #   shinyjs::enable("casespm_n")
+    #   shinyjs::enable("casesp100_n")
+    # } else if(input$tabs_n == "ECDPC ggplot") {
+    #   shinyjs::enable("checkSmooth_n")
+    #   shinyjs::enable("checkConfidenceInterval_n")
+    #   shinyjs::enable("casespm_n")
+    #   shinyjs::enable("casesp100_n")
+    # }
+  })  
   
   observeEvent(eventExpr = input$casespm, {
     if(input$casespm) {
@@ -598,9 +932,21 @@ server <- function(input, output, session) {
     }
   })
 
+  observeEvent(eventExpr = input$casespm_n, {
+    if(input$casespm_n) {
+      updateCheckboxInput(session, inputId = "casesp100_n", value = FALSE)
+    }
+  })
+  
   observeEvent(eventExpr = input$casesp100, {
     if(input$casesp100) {
       updateCheckboxInput(session, inputId = "casespm", value = FALSE)
+    }
+  })
+
+  observeEvent(eventExpr = input$casesp100_n, {
+    if(input$casesp100_n) {
+      updateCheckboxInput(session, inputId = "casespm_n", value = FALSE)
     }
   })
   

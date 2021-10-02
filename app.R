@@ -458,7 +458,7 @@ server <- function(input, output, session) {
     p <- p + theme_gdocs() +
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-      xlab("Date") +
+      xlab("Date of reporting") +
       scale_color_manual(values = dcolors)
       
     if(input$checkSmooth){
@@ -522,7 +522,7 @@ server <- function(input, output, session) {
     p <- p + theme_gdocs() +
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-      xlab("Date") +
+      xlab("Date of reporting") +
       scale_color_manual(values = dcolors)
     
     if(input$checkSmooth_n){
@@ -604,7 +604,7 @@ server <- function(input, output, session) {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
         hc_add_series_list(dhc) %>%
-        hc_xAxis(categories = unique(dp()$Date)) %>% 
+        hc_xAxis(title = list(text = "<b>Date of reporting</b>"), categories = unique(dp()$Date)) %>% 
         hc_yAxis(title = list(text = y_text),
                  plotLines = list(list(value = 75, color = "black", width = 2, dashStyle = "shortdash"),
                                   list(value = 70, color = "black", width = 2, dashStyle = "shortdash",
@@ -627,7 +627,7 @@ server <- function(input, output, session) {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
         hc_add_series_list(dhc) %>%
-        hc_xAxis(categories = unique(dp()$Date)) %>% 
+        hc_xAxis(title = list(text = "<b>Date of reporting</b>"), categories = unique(dp()$Date)) %>% 
         hc_yAxis(title = list(text = y_text)) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 
@@ -675,7 +675,7 @@ server <- function(input, output, session) {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
         hc_add_series_list(dhc) %>%
-        hc_xAxis(categories = unique(dpn()$Date)) %>% 
+        hc_xAxis(title = list(text = "<b>Date of reporting</b>"), categories = unique(dpn()$Date)) %>% 
         hc_yAxis(title = list(text = y_text),
                  plotLines = list(list(value = 75, color = "black", width = 2, dashStyle = "shortdash"),
                                   list(value = 70, color = "black", width = 2, dashStyle = "shortdash",
@@ -698,7 +698,7 @@ server <- function(input, output, session) {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
         hc_add_series_list(dhc) %>%
-        hc_xAxis(categories = unique(dpn()$Date)) %>% 
+        hc_xAxis(title = list(text = "<b>Date of reporting</b>"), categories = unique(dpn()$Date)) %>% 
         hc_yAxis(title = list(text = y_text)) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 
@@ -719,13 +719,13 @@ server <- function(input, output, session) {
         ungroup() %>% 
         mutate(Date = as.Date(make_datetime(year = nyear, month = nmonth, day = 1)))
         hchart(dbarp, 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
-          hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+          hc_xAxis(title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
           hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
           hc_colors(dcolors)
         
     } else {
       hchart(dp(), 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
-        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_xAxis( title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
         hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
         hc_colors(dcolors)
       
@@ -746,13 +746,13 @@ server <- function(input, output, session) {
         ungroup() %>% 
         mutate(Date = as.Date(make_datetime(year = nyear, month = nmonth, day = 1)))
       hchart(dbarp, 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
-        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_xAxis( title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
         hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
         hc_colors(dcolors)
       
     } else {
       hchart(dpn(), 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
-        hc_xAxis( title = list(text = "<b>Date</b>"), type = "datetime") %>% 
+        hc_xAxis( title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
         hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
         hc_colors(dcolors)
       
@@ -791,7 +791,7 @@ server <- function(input, output, session) {
     p <- p + theme_gdocs() +
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-      xlab("Date") +
+      xlab("Date of reporting") +
       scale_color_manual(values = dcolors)
     
     if(input$checkSmooth_w){
@@ -837,7 +837,7 @@ server <- function(input, output, session) {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
         hc_add_series_list(dhc) %>%
-        hc_xAxis(categories = dpw()$Date) %>% 
+        hc_xAxis(title = list(text = "<b>Date of reporting</b>"), categories = dpw()$Date) %>% 
         hc_yAxis(title = list(text = y_text), min = 0) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 

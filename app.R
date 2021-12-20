@@ -16,12 +16,20 @@ dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 
 # 14 days data from --------------------------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19
-dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv")
+# dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv", 
+#                       show_col_types = FALSE,
+#                       progress = show_progress())
+dw <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv",
+               na.strings = "", fileEncoding = "UTF-8-BOM")
 #load("others/dw.RData")
 
 # New daily data ----------------------------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country
-dxn <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv")
+#dxn <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv", 
+#                       show_col_types = FALSE,
+#                       progress = show_progress())
+dxn <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv",
+                na.strings = "", fileEncoding = "UTF-8-BOM")
 #load("others/dxn.RData")
 
 # change date format ------------------------------------------------------
@@ -120,6 +128,61 @@ dcolors <- c("red", "cyan", "green", "orange", "darkblue",
              "seagreen", "violeta", "mintcream", "gray", "darksalmon",
              "deeppink", "brown", "bisque")
 
+
+# boxxy -------------------------------------------------------------------
+boxxy <- function(title, value, color = "#FF0000", animate) {
+  list(title = title, value = value, color = color, animate = animate)
+}
+
+boxxyOutput <- function(id) {
+  el <- tags$div(
+    id = id, class = "boxxy", 
+    h1(id = sprintf("%s-boxxy-value", id), class = "boxxy-value"),
+    p(id = sprintf("%s-boxxy-title", id), class = "boxxy-title")
+  )
+  
+  # get full path
+  path <- normalizePath("boxes")
+  
+  deps <- list(
+    htmltools::htmlDependency(
+      name = "boxxy",
+      version = "1.0.0",
+      src = c(file = path),
+      script = c("binding.js"),
+      stylesheet = "styles.css"
+    )
+  )
+  
+  htmltools::attachDependencies(el, deps)
+}
+
+renderBoxxy <- function(expr, env = parent.frame(), quoted = FALSE) {
+  func <- shiny::exprToFunction(expr, env, quoted)
+  
+  function() {
+    #func()
+    val <- func()
+    
+    if(val$animate) {
+      path <- normalizePath("boxes")
+      
+      deps <- htmltools::htmlDependency(
+        name = "countup",
+        version = "1.8.2",
+        src = c(file = path),
+        script = c("countup.js") # only countup
+      )
+      
+      # serve dependency
+      val$deps <- list(shiny::createWebDependency(deps))
+    }
+    
+    return(val)
+  }
+}
+
+
 ui <- fluidPage(
 
   shinyjs::useShinyjs(),
@@ -155,7 +218,7 @@ ui <- fluidPage(
                                        "checkCountries_n",
                                        label = h5("Select countries"),
                                        choices = cl,
-                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                       selected = c(1, 7, 11, 23)
                                      )
                         ),
                         
@@ -163,6 +226,9 @@ ui <- fluidPage(
                                   tabsetPanel(id = "tabs_n",
                                               tabPanel("ECDPC Highcharts plot", 
                                                        highchartOutput("covid_hc_plot_n", height = 600),
+                                                       br(),
+                                                       h4("Data for Poland:"),
+                                                       uiOutput("t1"),
                                                        h4("Data source:"),
                                                        p("European Centre for Disease Prevention and Control"),
                                                        a("https://www.ecdc.europa.eu/en/publications-data/data-daily-new-cases-covid-19-eueea-country",
@@ -908,22 +974,51 @@ server <- function(input, output, session) {
       shinyjs::disable("casespm_n")
       shinyjs::disable("casesp100_n")
     }
-    # 
-    # 
-    # 
-    # if (input$tabs_n == "ECDPC Highcharts plot") {
-    #   updateCheckboxInput(session, inputId = "checkSmooth_n", value = FALSE)
-    #   updateCheckboxInput(session, inputId = "checkConfidenceInterval_n", value = FALSE)
-    #   shinyjs::disable("checkSmooth_n")
-    #   shinyjs::disable("checkConfidenceInterval_n")
-    #   shinyjs::enable("casespm_n")
-    #   shinyjs::enable("casesp100_n")
-    # } else if(input$tabs_n == "ECDPC ggplot") {
-    #   shinyjs::enable("checkSmooth_n")
-    #   shinyjs::enable("checkConfidenceInterval_n")
-    #   shinyjs::enable("casespm_n")
-    #   shinyjs::enable("casesp100_n")
-    # }
+    
+    output$t1 <- renderUI({
+      dt <- dpn()
+      names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
+                     "New cases per million", "New cases per 100,000")
+      dt[,5] <- round(dt[,5], 2)
+      dt[,6] <- round(dt[,6], 2)
+      dt <- dt[dt$Country == "Poland",]
+      fluidRow(column(2, boxxyOutput("currentdate")),
+               column(2, boxxyOutput("totalcases")),
+               column(2, boxxyOutput("newcases")),
+               column(3, boxxyOutput("newperm")),
+               column(3, boxxyOutput("newperht")))
+    })
+    
+    output$currentdate <- renderBoxxy({
+      dt <- dxn[dxn$geoId == "PL",]
+      t <- as.character(as.POSIXlt.Date(dt$dateRep[1]))[1][[1]]
+      boxxy("Reporting date", t, animate = FALSE)
+    })
+    
+    
+    output$totalcases <- renderBoxxy({
+      dt <- dxn[dxn$geoId == "PL",]
+      total_cases <- sum(dt$cases)
+      boxxy("Total cases", as.character(total_cases), animate = TRUE)  
+    })
+    
+    output$newcases <- renderBoxxy({
+      dt <- dxn[dxn$geoId == "PL",]
+      boxxy("New cases", as.character(dt$cases[1]), animate = TRUE)
+    })
+    
+    output$newperm <- renderBoxxy({
+      dt <- dxn[dxn$geoId == "PL",]
+      cases <- round(dt$cases[1] / (dt$popData2020[1] / 1000000), 0)
+      boxxy("New per million", as.character(cases), animate = TRUE)
+    })
+
+    output$newperht <- renderBoxxy({
+      dt <- dxn[dxn$geoId == "PL",]
+      cases <- round(dt$cases[1] / (dt$popData2020[1] / 100000), 0)
+      boxxy("New per 100,000", as.character(cases), animate = TRUE)
+    })
+    
   })  
   
   observeEvent(eventExpr = input$casespm, {

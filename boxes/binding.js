@@ -31,6 +31,6 @@ $.extend(boxxyBinding, {
 });
 
 // register
-Shiny.outputBindings.register(boxxyBinding, "john.boxxy");
+Shiny.outputBindings.register(boxxyBinding, "pawel.boxxy");
 
 

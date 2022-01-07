@@ -130,7 +130,7 @@ dcolors <- c("red", "cyan", "green", "orange", "darkblue",
 
 
 # boxxy -------------------------------------------------------------------
-boxxy <- function(title, value, color = "#FF0000", animate) {
+boxxy <- function(title, value, color = "#FF0920", animate) {
   list(title = title, value = value, color = color, animate = animate)
 }
 

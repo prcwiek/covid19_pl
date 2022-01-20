@@ -10,18 +10,16 @@ library(tidyverse)
 # Daily data until 2020-12-14 from -----------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
 download.file("https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx",
-            destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
+           destfile = "COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 dx <- read_excel("COVID-19-geographic-disbtribution-worldwide-2020-12-14.xlsx")
 #load("others/dx.RData")
 
 # 14 days data from --------------------------------------------------------
 # https://www.ecdc.europa.eu/en/publications-data/data-national-14-day-notification-rate-covid-19
-# dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv", 
-#                       show_col_types = FALSE,
-#                       progress = show_progress())
+dw <- readr::read_csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv/data.csv",
+                       show_col_types = FALSE,
+                       progress = show_progress())
 
-dw <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv",
-                na.strings = "", fileEncoding = "UTF-8-BOM")
 #load("others/dw.RData")
 
 # New daily data ----------------------------------------------------------
@@ -30,7 +28,7 @@ dw <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath/csv",
 #                       show_col_types = FALSE,
 #                       progress = show_progress())
 
-dxn <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv",
+dxn <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv/data.csv",
                 na.strings = "", fileEncoding = "UTF-8-BOM")
 #load("others/dxn.RData")
 
@@ -80,6 +78,20 @@ cl <- list("Poland" = 1,
            "United Kingdom" = 27
 )
 
+# colors ------------------------------------------------------------------
+dcolors <- data.frame(geoId = c("AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE",
+                                "EL","HU","IS","IE","IT","LV","LI","LT","LU","MT","NL",
+                                "NO","PL","PT","RO","SK","SI","ES","SE"),
+                      country_code = c("AUT", "BEL", "BGR", "HRV", "CYP", "CZE", "DNK", "EST", "FIN", "FRA", "DEU",
+                                       "GRC", "HUN", "ISL", "IRL", "ITA", "LVA", "LIE", "LTU", "LUX", "MLT", "NLD",
+                                       "NOR", "POL", "PRT", "ROU", "SVK","SVN", "ESP", "SWE"),
+                      color = c("grey", "cyan", "green", "orange", "darkblue",
+                                "darkgreen", "gold", "pink", "lightgray", "limegreen",
+                                "magenta", "navyblue", "mistyrose", "orchid", "purple",
+                                "blue", "yellow", "turquise", "tomato", "sienna",
+                                "seagreen", "violeta", "mintcream", "red", "darksalmon",
+                                "deeppink", "brown", "bisque", "#7FFF00", "#EE1289"))
+
 # add countries id to dx --------------------------------------------------
 dcl <-  data.frame(countriesAndTerritories = names(cl),
                    id_country = unlist(matrix(cl)))
@@ -91,19 +103,13 @@ dx <- dx %>%
   left_join(dcl, by = "countriesAndTerritories") %>%
   filter(!is.na(id_country)) %>%
   filter(cases >= 0) %>% 
-  mutate(countriesAndTerritories = str_replace_all(countriesAndTerritories, pattern = "United_Kingdom", replacement = "United Kingdom"))
+  mutate(countriesAndTerritories = str_replace_all(countriesAndTerritories,
+                                                   pattern = "United_Kingdom",
+                                                   replacement = "United Kingdom")) %>% 
+  left_join(dcolors, by = "geoId")
 
-# colors ------------------------------------------------------------------
-dcolors <- data.frame(geoId = c("AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE",
-                                "EL","HU","IS","IE","IT","LV","LI","LT","LU","MT","NL",
-                                "NO","PL","PT","RO","SK","SI","ES","SE"),
-                      color = c("grey", "cyan", "green", "orange", "darkblue",
-                                "darkgreen", "gold", "pink", "lightgray", "limegreen",
-                                "magenta", "navyblue", "mistyrose", "orchid", "purple",
-                                "blue", "yellow", "turquise", "tomato", "sienna",
-                                "seagreen", "violeta", "mintcream", "red", "darksalmon",
-                                "deeppink", "brown", "bisque", "#7FFF00", "#EE1289"))
-
+# add color for UK
+dx$color[dx$geoId == "UK"] <- "royalblue"
 
 # processing dxn with new data --------------------------------------------
 dxn <- dxn %>%
@@ -127,7 +133,8 @@ dw <- dw %>%
   mutate(Date = as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")) +
            as.numeric(str_sub(year_week, -2, -1)) * 7 - 
            as.numeric(format(as.Date(paste0(str_sub(year_week, 1, 4), "-01-01")), format = "%w"))) %>% 
-  left_join(dx_population, by = "id_country")
+  left_join(dx_population, by = "id_country") %>% 
+  left_join(dcolors, by = "country_code")
 
 names(dw) <- gsub(pattern = "^country$", "Country", names(dw))
 
@@ -419,7 +426,8 @@ server <- function(input, output, session) {
              deaths,
              popData2019,
              cases_per_million,
-             cases_per_100k) %>%
+             cases_per_100k,
+             color) %>%
       filter(complete.cases(.)) %>%
       arrange(Date) %>%
       group_by(Country) %>%
@@ -428,7 +436,8 @@ server <- function(input, output, session) {
         cases,
         case_sum = cumsum(cases),
         cases_per_million,
-        cases_per_100k
+        cases_per_100k,
+        color
       ) %>% 
       filter(Date >= input$sdate & Date <= input$edate) %>% 
       ungroup()
@@ -483,6 +492,7 @@ server <- function(input, output, session) {
   })
     
   output$covidPlot <- renderPlot({
+    dcolors_new <- unique(dp()$color)
     if(input$casespm) {
       p <- ggplot(data = dp(),
                   aes(x = Date, y = cases_per_million, color = Country)) +
@@ -533,7 +543,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values = dcolors) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date of reporting") +
-      scale_color_manual(values = dcolors)
+      scale_color_manual(values = dcolors_new) +
+      ylim(0, NA)
       
     if(input$checkSmooth){
       p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
@@ -602,7 +613,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values = dcolors_new) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date of reporting") +
-      scale_color_manual(values = dcolors_new)
+      scale_color_manual(values = dcolors_new) +
+      ylim(0, NA)
     
     if(input$checkSmooth_n){
       p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
@@ -614,7 +626,7 @@ server <- function(input, output, session) {
   })
   
   output$covidTable <- renderDataTable({
-      dt <- dp()
+      dt <- dp() %>% select(-color)
       names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
                      "New cases per million", "New cases per 100,000")
       dt[,5] <- round(dt[,5], 2)
@@ -638,6 +650,7 @@ server <- function(input, output, session) {
   # Thu Sep 23 21:59:08 2021 ------------------------------
   # new daily cases
   output$covidTable_n <- renderDataTable({
+    
     dt <- dpn() %>% select(-color)
     names(dt) <- c("Country", "Date", "New cases", "Sum of all cases per country", 
                    "New cases per million", "New cases per 100,000")
@@ -647,6 +660,7 @@ server <- function(input, output, session) {
   })
   
   output$covid_hc_plot <- renderHighchart({
+    dcolors_new <- unique(dp()$color)
     if(input$casespm) {
       dhc <- dp() %>%
         group_by(Country) %>%
@@ -701,7 +715,7 @@ server <- function(input, output, session) {
                  ) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 
-        hc_colors(dcolors)
+        hc_colors(dcolors_new)
     } else {
       highchart() %>% 
         hc_plotOptions(series = list(marker = list(enabled = FALSE))) %>% 
@@ -710,7 +724,7 @@ server <- function(input, output, session) {
         hc_yAxis(title = list(text = y_text)) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 
-        hc_colors(dcolors)
+        hc_colors(dcolors_new)
     }
     
   })
@@ -791,6 +805,7 @@ server <- function(input, output, session) {
   output$covid_hc_barplot <- renderHighchart({
     
     # change summary to months ------------------------------------------------
+    dcolors_new <- unique(dp()$color)
     if((input$edate - input$sdate) > 30) {
       dbarp <- dp() %>% 
         mutate(nmonth = month(Date),
@@ -802,13 +817,13 @@ server <- function(input, output, session) {
         hchart(dbarp, 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
           hc_xAxis(title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
           hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
-          hc_colors(dcolors)
+          hc_colors(dcolors_new)
         
     } else {
       hchart(dp(), 'column', hcaes(x = Date, y = case_sum, group = Country)) %>% 
         hc_xAxis( title = list(text = "<b>Date of reporting</b>"), type = "datetime") %>% 
         hc_yAxis(title = list(text = "Sum of all cases per country")) %>%
-        hc_colors(dcolors)
+        hc_colors(dcolors_new)
       
     }
   })
@@ -844,6 +859,7 @@ server <- function(input, output, session) {
   
   # Sat Mar 20 20:50:55 2021 ------------------------------
   output$new_weekly_cases <- renderPlot({
+    dcolors_new <- unique(dpw()$color)
     if(input$casespm_w) {
       p <- ggplot(data = dpw(),
                   aes(x = Date, y = cases_per_million, color = Country)) +
@@ -857,11 +873,21 @@ server <- function(input, output, session) {
         ylab("New weekly cases per 100,000") +
         scale_y_continuous(breaks = round(seq(0, max(dpw()$cases_per_100k), by = 100), 0), limits = c(0,NA))
     } else {
+      if(max(dpw()$weekly_count) - min(dpw()$weekly_count) > 10000) {
+        by_ticks = 20000
+      } else if (max(dpw()$weekly_count) - min(dpw()$weekly_count) > 4000 & max(dpw()$weekly_count) - min(dpw()$weekly_count) < 10000) {
+        by_ticks = 1000
+      } else if(max(dpw()$weekly_count) - min(dpw()$weekly_count) > 10000) {
+        by_ticks = 2500
+      } else {
+        by_ticks = 250
+      }
+      
       p <- ggplot(data = dpw(),
                   aes(x = Date, y = weekly_count, color = Country)) +
         geom_line() +
         ylab("New weekly cases") +
-        scale_y_continuous(breaks = round(seq(0, max(dpw()$weekly_count), by = 10000), 0), limits = c(0,NA))
+        scale_y_continuous(breaks = round(seq(0, max(dpw()$weekly_count), by = by_ticks), 0), limits = c(0,NA))
     }
     
     # add common part ---------------------------------------------------------
@@ -871,10 +897,11 @@ server <- function(input, output, session) {
       p <- p + scale_x_date(date_breaks = "2 week", date_labels = "%Y-%m-%d")
     }
     p <- p + theme_gdocs() +
-      scale_fill_manual(values = dcolors) +
+      scale_fill_manual(values = dcolors_new) +
       theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
       xlab("Date of reporting") +
-      scale_color_manual(values = dcolors)
+      scale_color_manual(values = dcolors_new) +
+      ylim(0, NA)
     
     if(input$checkSmooth_w){
       p <- p + geom_smooth(method = lm, formula = y ~ splines::bs(x, 6),
@@ -884,6 +911,7 @@ server <- function(input, output, session) {
   })
   
   output$covid_hc_plot_w <- renderHighchart({
+    dcolors_new <- unique(dpw()$color)
     if(input$casespm_w) {
       dhc <- dpw() %>%
         group_by(Country) %>%
@@ -923,7 +951,7 @@ server <- function(input, output, session) {
         hc_yAxis(title = list(text = y_text), min = 0) %>% 
         hc_tooltip(table = TRUE,
                    sort = TRUE) %>% 
-        hc_colors(dcolors)
+        hc_colors(dcolors_new)
   })
 
   observeEvent(input$tabs, {

@@ -230,7 +230,7 @@ ui <- fluidPage(
                                        "checkCountries_n",
                                        label = h5("Select countries"),
                                        choices = cl,
-                                       selected = c(1, 7, 11, 23)
+                                       selected = c(1, 7, 12, 24)
                                      )
                         ),
                         
@@ -301,7 +301,7 @@ ui <- fluidPage(
                                        "checkCountries_w",
                                        label = h5("Select countries"),
                                        choices = cl,
-                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                       selected = c(1, 7, 12, 18, 24, 27)
                                      )
                         ),
                         
@@ -357,7 +357,7 @@ ui <- fluidPage(
                                        "checkCountries",
                                        label = h5("Select countries"),
                                        choices = cl,
-                                       selected = c(1, 7, 12, 13, 17, 23, 26)
+                                       selected = c(1, 7, 12, 18, 24, 27)
                                      )
                         ),
                         

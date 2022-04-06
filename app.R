@@ -58,24 +58,24 @@ cl <- list("Poland" = 1,
            "Denmark" = 8,
            "Estonia" = 9,
            "Finland" = 10,
-           "France" = 10,
-           "Germany" = 11,
-           "Greece" = 12,
-           "Hungary" = 13,
-           "Ireland" = 14,
-           "Italy" = 15,
-           "Latvia" = 16,
-           "Lithuania" = 17,
-           "Luxembourg" = 18,
-           "Malta" = 19,
-           "Netherlands" = 20,
-           "Portugal" = 21,
-           "Romania" = 22,
-           "Slovakia" = 23,
-           "Slovenia" = 24,
-           "Spain" = 25,
-           "Sweden" = 26,
-           "United Kingdom" = 27
+           "France" = 11,
+           "Germany" = 12,
+           "Greece" = 13,
+           "Hungary" = 14,
+           "Ireland" = 15,
+           "Italy" = 16,
+           "Latvia" = 17,
+           "Lithuania" = 18,
+           "Luxembourg" = 19,
+           "Malta" = 20,
+           "Netherlands" = 21,
+           "Portugal" = 22,
+           "Romania" = 23,
+           "Slovakia" = 24,
+           "Slovenia" = 25,
+           "Spain" = 26,
+           "Sweden" = 27,
+           "United Kingdom" = 28
 )
 
 # colors ------------------------------------------------------------------
@@ -357,7 +357,7 @@ ui <- fluidPage(
                                        "checkCountries",
                                        label = h5("Select countries"),
                                        choices = cl,
-                                       selected = c(1, 7, 11, 13, 17, 23, 26)
+                                       selected = c(1, 7, 12, 13, 17, 23, 26)
                                      )
                         ),
                         
